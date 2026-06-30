@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron'
+import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
 
@@ -18,6 +18,21 @@ function createWindow() {
     win.loadFile(join(__dirname, '../renderer/index.html'))
   }
 }
+
+ipcMain.handle('vault:encrypt', async (_event, plaintext, publicKeyPem) => {
+  // stub — real impl in STORY-04
+  return { result: `[stub] encrypt called: ${plaintext?.slice(0, 20)}` }
+})
+
+ipcMain.handle('vault:decrypt', async (_event, ciphertext, privateKeyPem) => {
+  // stub — real impl in STORY-05
+  return { result: `[stub] decrypt called` }
+})
+
+ipcMain.handle('vault:generateKeypair', async () => {
+  // stub — real impl in STORY-03
+  return { result: '[stub] generateKeypair called' }
+})
 
 app.whenReady().then(createWindow)
 
