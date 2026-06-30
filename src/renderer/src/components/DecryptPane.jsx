@@ -29,10 +29,15 @@ export default function DecryptPane() {
     setError('')
     setOutput('')
     setLoading(true)
-    const { result, error: err } = await window.vault.decrypt(ciphertext.trim(), privateKey)
-    setLoading(false)
-    if (err) setError(err)
-    else setOutput(result)
+    try {
+      const { result, error: err } = await window.vault.decrypt(ciphertext.trim(), privateKey)
+      if (err) setError(err)
+      else setOutput(result)
+    } catch (e) {
+      setError(`Unexpected error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCopy() {

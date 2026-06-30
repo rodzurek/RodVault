@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { s } from '../styles/shared'
 
-function isPemKey(str) {
-  return str.trim().startsWith('-----BEGIN')
+function isValidPublicKey(str) {
+  const t = str.trim()
+  return t.startsWith('-----BEGIN') || /^ssh-rsa\s/.test(t)
 }
 
 export default function EncryptPane() {
@@ -14,17 +15,22 @@ export default function EncryptPane() {
   const [copied, setCopied] = useState(false)
 
   async function handleEncrypt() {
-    if (!isPemKey(publicKey)) {
-      setError('Invalid key format — paste a PEM public key starting with -----BEGIN PUBLIC KEY-----')
+    if (!isValidPublicKey(publicKey)) {
+      setError('Invalid key format — paste a PEM public key (-----BEGIN PUBLIC KEY-----) or SSH public key (ssh-rsa ...)')
       return
     }
     setError('')
     setOutput('')
     setLoading(true)
-    const { result, error: err } = await window.vault.encrypt(plaintext, publicKey)
-    setLoading(false)
-    if (err) setError(err)
-    else setOutput(result)
+    try {
+      const { result, error: err } = await window.vault.encrypt(plaintext, publicKey)
+      if (err) setError(err)
+      else setOutput(result)
+    } catch (e) {
+      setError(`Unexpected error: ${e.message}`)
+    } finally {
+      setLoading(false)
+    }
   }
 
   async function handleCopy() {
@@ -53,7 +59,7 @@ export default function EncryptPane() {
         <textarea
           style={{ ...s.textarea, ...s.mono }}
           rows={8}
-          placeholder={'-----BEGIN PUBLIC KEY-----\n...'}
+          placeholder={'-----BEGIN PUBLIC KEY-----\n...\nor: ssh-rsa AAAA...(RSA only)'}
           value={publicKey}
           onChange={(e) => { setPublicKey(e.target.value); setError('') }}
         />
