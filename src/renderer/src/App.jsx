@@ -1,24 +1,94 @@
+import { useState } from 'react'
 import EncryptPane from './components/EncryptPane'
 import DecryptPane from './components/DecryptPane'
+import KeypairGenerator from './components/KeypairGenerator'
 
-function App() {
+const TABS = [
+  { id: 'encrypt', label: 'Encrypt' },
+  { id: 'decrypt', label: 'Decrypt' },
+  { id: 'keygen', label: 'Generate Keypair' }
+]
+
+export default function App() {
+  const [active, setActive] = useState('encrypt')
+
   return (
-    <div style={{ background: '#0f0f1a', minHeight: '100vh', padding: 32, color: '#e0e0e0' }}>
-      <h1 style={{ fontFamily: 'sans-serif', marginTop: 0, marginBottom: 32, color: '#fff' }}>
-        RodVault — STORY-07 Test
-      </h1>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 32 }}>
-        <div>
-          <h2 style={{ fontFamily: 'sans-serif', color: '#a5b4fc', marginTop: 0 }}>Encrypt</h2>
-          <EncryptPane />
-        </div>
-        <div>
-          <h2 style={{ fontFamily: 'sans-serif', color: '#4ade80', marginTop: 0 }}>Decrypt</h2>
-          <DecryptPane />
-        </div>
-      </div>
+    <div style={styles.root}>
+      <header style={styles.header}>
+        <span style={styles.logo}>🔐 RodVault</span>
+        <nav style={styles.nav}>
+          {TABS.map((tab) => (
+            <button
+              key={tab.id}
+              style={active === tab.id ? styles.tabActive : styles.tab}
+              onClick={() => setActive(tab.id)}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </nav>
+      </header>
+
+      <main style={styles.main}>
+        {active === 'encrypt' && <EncryptPane />}
+        {active === 'decrypt' && <DecryptPane />}
+        {active === 'keygen' && <KeypairGenerator />}
+      </main>
     </div>
   )
 }
 
-export default App
+const styles = {
+  root: {
+    background: '#0f0f1a',
+    minHeight: '100vh',
+    color: '#e0e0e0',
+    display: 'flex',
+    flexDirection: 'column'
+  },
+  header: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 32,
+    padding: '14px 28px',
+    borderBottom: '1px solid #1e1e3a',
+    background: '#0b0b16'
+  },
+  logo: {
+    fontSize: 18,
+    fontWeight: 700,
+    color: '#fff',
+    fontFamily: 'sans-serif',
+    letterSpacing: '-0.3px'
+  },
+  nav: { display: 'flex', gap: 4 },
+  tab: {
+    background: 'transparent',
+    color: '#888',
+    border: 'none',
+    borderRadius: 6,
+    padding: '7px 16px',
+    fontSize: 13,
+    fontWeight: 500,
+    cursor: 'pointer',
+    fontFamily: 'sans-serif'
+  },
+  tabActive: {
+    background: '#1e1e3a',
+    color: '#a5b4fc',
+    border: 'none',
+    borderRadius: 6,
+    padding: '7px 16px',
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: 'pointer',
+    fontFamily: 'sans-serif'
+  },
+  main: {
+    flex: 1,
+    padding: 28,
+    maxWidth: 780,
+    width: '100%',
+    boxSizing: 'border-box'
+  }
+}
