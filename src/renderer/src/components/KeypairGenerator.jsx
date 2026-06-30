@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { s } from '../styles/shared'
 
 export default function KeypairGenerator() {
   const [keys, setKeys] = useState(null)
@@ -23,107 +24,44 @@ export default function KeypairGenerator() {
   }
 
   return (
-    <div style={styles.pane}>
-      <button style={loading ? styles.btnDisabled : styles.btn} onClick={handleGenerate} disabled={loading}>
+    <div style={s.pane}>
+      <p style={{ color: '#888', fontSize: 13, lineHeight: 1.6, margin: 0 }}>
+        Generate a 2048-bit RSA keypair. Use the public key to encrypt, the private key to decrypt.
+      </p>
+
+      <button style={loading ? s.btnDisabled : s.btn} onClick={handleGenerate} disabled={loading}>
         {loading ? 'Generating...' : 'Generate Keypair'}
       </button>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div style={s.error}>{error}</div>}
 
       {keys && (
         <>
-          <div style={styles.warning}>
-            ⚠ Save your private key — it cannot be recovered after closing this app.
+          <div style={s.warning}>
+            ⚠ Save your private key now — it is not stored anywhere and cannot be recovered.
           </div>
 
-          <div style={styles.field}>
-            <div style={styles.outputHeader}>
-              <label style={styles.label}>Public Key (PEM)</label>
-              <button style={styles.copyBtn} onClick={() => handleCopy('pub')}>
+          <div style={s.field}>
+            <div style={s.outputHeader}>
+              <label style={s.label}>Public Key (PEM)</label>
+              <button style={s.copyBtn} onClick={() => handleCopy('pub')}>
                 {copied.pub ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <textarea style={{ ...styles.textarea, ...styles.mono }} rows={7} readOnly value={keys.publicKey} />
+            <textarea style={{ ...s.textarea, ...s.mono }} rows={7} readOnly value={keys.publicKey} />
           </div>
 
-          <div style={styles.field}>
-            <div style={styles.outputHeader}>
-              <label style={styles.label}>Private Key (PEM)</label>
-              <button style={styles.copyBtn} onClick={() => handleCopy('priv')}>
+          <div style={s.field}>
+            <div style={s.outputHeader}>
+              <label style={s.label}>Private Key (PEM)</label>
+              <button style={s.copyBtn} onClick={() => handleCopy('priv')}>
                 {copied.priv ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <textarea style={{ ...styles.textarea, ...styles.mono }} rows={12} readOnly value={keys.privateKey} />
+            <textarea style={{ ...s.textarea, ...s.mono }} rows={12} readOnly value={keys.privateKey} />
           </div>
         </>
       )}
     </div>
   )
-}
-
-const styles = {
-  pane: { display: 'flex', flexDirection: 'column', gap: 16 },
-  field: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 13, fontWeight: 600, color: '#ccc' },
-  textarea: {
-    background: '#1a1a2e',
-    color: '#e0e0e0',
-    border: '1px solid #333',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13,
-    resize: 'vertical',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box'
-  },
-  mono: { fontFamily: 'monospace', fontSize: 11 },
-  btn: {
-    background: '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    alignSelf: 'flex-start'
-  },
-  btnDisabled: {
-    background: '#333',
-    color: '#666',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'not-allowed',
-    alignSelf: 'flex-start'
-  },
-  error: {
-    background: '#2d1a1a',
-    color: '#f87171',
-    border: '1px solid #7f1d1d',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13
-  },
-  warning: {
-    background: '#2d2500',
-    color: '#fbbf24',
-    border: '1px solid #78350f',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13
-  },
-  outputHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  copyBtn: {
-    background: '#1e3a2f',
-    color: '#4ade80',
-    border: '1px solid #166534',
-    borderRadius: 4,
-    padding: '4px 12px',
-    fontSize: 12,
-    cursor: 'pointer'
-  }
 }

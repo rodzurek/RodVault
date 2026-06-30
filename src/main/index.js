@@ -15,10 +15,14 @@ function createWindow() {
   const win = new BrowserWindow({
     width: 900,
     height: 650,
+    minWidth: 720,
+    minHeight: 500,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       sandbox: false
-    }
+    },
+    titleBarStyle: 'default',
+    title: 'RodVault'
   })
 
   if (is.dev && process.env['ELECTRON_RENDERER_URL']) {
@@ -51,7 +55,10 @@ ipcMain.handle('vault:encrypt', async (_event, plaintext, publicKeyPem) => {
 
     return { result: Buffer.from(bundle).toString('base64') }
   } catch (err) {
-    return { error: err.message }
+    if (err.message.includes('key') || err.message.includes('PEM') || err.message.includes('ASN')) {
+      return { error: 'Invalid public key — paste a valid PEM public key.' }
+    }
+    return { error: `Encryption failed: ${err.message}` }
   }
 })
 

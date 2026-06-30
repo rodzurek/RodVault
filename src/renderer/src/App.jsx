@@ -2,6 +2,7 @@ import { useState } from 'react'
 import EncryptPane from './components/EncryptPane'
 import DecryptPane from './components/DecryptPane'
 import KeypairGenerator from './components/KeypairGenerator'
+import { colors } from './styles/shared'
 
 const TABS = [
   { id: 'encrypt', label: 'Encrypt' },
@@ -15,7 +16,9 @@ export default function App() {
   return (
     <div style={styles.root}>
       <header style={styles.header}>
-        <span style={styles.logo}>🔐 RodVault</span>
+        <span style={styles.logo}>
+          <span style={styles.logoIcon}>🔐</span> RodVault
+        </span>
         <nav style={styles.nav}>
           {TABS.map((tab) => (
             <button
@@ -40,55 +43,61 @@ export default function App() {
 
 const styles = {
   root: {
-    background: '#0f0f1a',
-    minHeight: '100vh',
-    color: '#e0e0e0',
+    background: colors.bg,
+    height: '100vh',
     display: 'flex',
-    flexDirection: 'column'
+    flexDirection: 'column',
+    overflow: 'hidden'
   },
   header: {
     display: 'flex',
     alignItems: 'center',
     gap: 32,
-    padding: '14px 28px',
-    borderBottom: '1px solid #1e1e3a',
-    background: '#0b0b16'
+    padding: '0 24px',
+    height: 52,
+    borderBottom: `1px solid ${colors.border}`,
+    background: colors.surfaceAlt,
+    flexShrink: 0
   },
   logo: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: 700,
     color: '#fff',
-    fontFamily: 'sans-serif',
-    letterSpacing: '-0.3px'
+    display: 'flex',
+    alignItems: 'center',
+    gap: 8,
+    letterSpacing: '-0.2px'
   },
-  nav: { display: 'flex', gap: 4 },
+  logoIcon: { fontSize: 18 },
+  nav: { display: 'flex', gap: 2 },
   tab: {
     background: 'transparent',
-    color: '#888',
+    color: colors.textMuted,
     border: 'none',
     borderRadius: 6,
-    padding: '7px 16px',
+    padding: '6px 14px',
     fontSize: 13,
     fontWeight: 500,
     cursor: 'pointer',
-    fontFamily: 'sans-serif'
+    fontFamily: 'inherit',
+    transition: 'color 0.15s'
   },
   tabActive: {
-    background: '#1e1e3a',
-    color: '#a5b4fc',
+    background: colors.accentBg,
+    color: colors.accent,
     border: 'none',
     borderRadius: 6,
-    padding: '7px 16px',
+    padding: '6px 14px',
     fontSize: 13,
     fontWeight: 600,
     cursor: 'pointer',
-    fontFamily: 'sans-serif'
+    fontFamily: 'inherit'
   },
   main: {
     flex: 1,
-    padding: 28,
-    maxWidth: 780,
-    width: '100%',
-    boxSizing: 'border-box'
+    padding: 24,
+    overflowY: 'auto',
+    maxWidth: 800,
+    width: '100%'
   }
 }

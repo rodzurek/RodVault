@@ -1,4 +1,17 @@
 import { useState } from 'react'
+import { s } from '../styles/shared'
+
+function isPemKey(str) {
+  return str.trim().startsWith('-----BEGIN')
+}
+
+function isValidBase64(str) {
+  try {
+    return btoa(atob(str.trim())) === str.trim() || str.trim().length > 0
+  } catch {
+    return false
+  }
+}
 
 export default function DecryptPane() {
   const [ciphertext, setCiphertext] = useState('')
@@ -9,10 +22,14 @@ export default function DecryptPane() {
   const [copied, setCopied] = useState(false)
 
   async function handleDecrypt() {
+    if (!isPemKey(privateKey)) {
+      setError('Invalid key format — paste a PEM private key starting with -----BEGIN PRIVATE KEY-----')
+      return
+    }
     setError('')
     setOutput('')
     setLoading(true)
-    const { result, error: err } = await window.vault.decrypt(ciphertext, privateKey)
+    const { result, error: err } = await window.vault.decrypt(ciphertext.trim(), privateKey)
     setLoading(false)
     if (err) setError(err)
     else setOutput(result)
@@ -27,110 +44,46 @@ export default function DecryptPane() {
   const canDecrypt = ciphertext.trim().length > 0 && privateKey.trim().length > 0 && !loading
 
   return (
-    <div style={styles.pane}>
-      <div style={styles.field}>
-        <label style={styles.label}>Ciphertext (Base64)</label>
+    <div style={s.pane}>
+      <div style={s.field}>
+        <label style={s.label}>Ciphertext (Base64)</label>
         <textarea
-          style={{ ...styles.textarea, ...styles.mono }}
+          style={{ ...s.textarea, ...s.mono }}
           rows={5}
           placeholder="Paste Base64 encrypted string..."
           value={ciphertext}
-          onChange={(e) => setCiphertext(e.target.value)}
+          onChange={(e) => { setCiphertext(e.target.value); setError('') }}
         />
       </div>
 
-      <div style={styles.field}>
-        <label style={styles.label}>Private Key (PEM)</label>
+      <div style={s.field}>
+        <label style={s.label}>Private Key (PEM)</label>
         <textarea
-          style={{ ...styles.textarea, ...styles.mono }}
+          style={{ ...s.textarea, ...s.mono }}
           rows={8}
-          placeholder="-----BEGIN PRIVATE KEY-----&#10;..."
+          placeholder={'-----BEGIN PRIVATE KEY-----\n...'}
           value={privateKey}
-          onChange={(e) => setPrivateKey(e.target.value)}
+          onChange={(e) => { setPrivateKey(e.target.value); setError('') }}
         />
       </div>
 
-      <button style={canDecrypt ? styles.btn : styles.btnDisabled} onClick={handleDecrypt} disabled={!canDecrypt}>
+      <button style={canDecrypt ? s.btn : s.btnDisabled} onClick={handleDecrypt} disabled={!canDecrypt}>
         {loading ? 'Decrypting...' : 'Decrypt'}
       </button>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div style={s.error}>{error}</div>}
 
       {output && (
-        <div style={styles.field}>
-          <div style={styles.outputHeader}>
-            <label style={styles.label}>Decrypted Plaintext</label>
-            <button style={styles.copyBtn} onClick={handleCopy}>
+        <div style={s.field}>
+          <div style={s.outputHeader}>
+            <label style={s.label}>Decrypted Plaintext</label>
+            <button style={s.copyBtn} onClick={handleCopy}>
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <textarea
-            style={styles.textarea}
-            rows={6}
-            readOnly
-            value={output}
-          />
+          <textarea style={s.textarea} rows={6} readOnly value={output} />
         </div>
       )}
     </div>
   )
-}
-
-const styles = {
-  pane: { display: 'flex', flexDirection: 'column', gap: 16 },
-  field: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 13, fontWeight: 600, color: '#ccc' },
-  textarea: {
-    background: '#1a1a2e',
-    color: '#e0e0e0',
-    border: '1px solid #333',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13,
-    resize: 'vertical',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box'
-  },
-  mono: { fontFamily: 'monospace', fontSize: 12 },
-  btn: {
-    background: '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    alignSelf: 'flex-start'
-  },
-  btnDisabled: {
-    background: '#333',
-    color: '#666',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'not-allowed',
-    alignSelf: 'flex-start'
-  },
-  error: {
-    background: '#2d1a1a',
-    color: '#f87171',
-    border: '1px solid #7f1d1d',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13
-  },
-  outputHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  copyBtn: {
-    background: '#1e3a2f',
-    color: '#4ade80',
-    border: '1px solid #166534',
-    borderRadius: 4,
-    padding: '4px 12px',
-    fontSize: 12,
-    cursor: 'pointer'
-  }
 }

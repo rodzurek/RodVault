@@ -1,4 +1,9 @@
 import { useState } from 'react'
+import { s } from '../styles/shared'
+
+function isPemKey(str) {
+  return str.trim().startsWith('-----BEGIN')
+}
 
 export default function EncryptPane() {
   const [plaintext, setPlaintext] = useState('')
@@ -9,6 +14,10 @@ export default function EncryptPane() {
   const [copied, setCopied] = useState(false)
 
   async function handleEncrypt() {
+    if (!isPemKey(publicKey)) {
+      setError('Invalid key format — paste a PEM public key starting with -----BEGIN PUBLIC KEY-----')
+      return
+    }
     setError('')
     setOutput('')
     setLoading(true)
@@ -27,11 +36,11 @@ export default function EncryptPane() {
   const canEncrypt = plaintext.trim().length > 0 && publicKey.trim().length > 0 && !loading
 
   return (
-    <div style={styles.pane}>
-      <div style={styles.field}>
-        <label style={styles.label}>Plaintext</label>
+    <div style={s.pane}>
+      <div style={s.field}>
+        <label style={s.label}>Plaintext</label>
         <textarea
-          style={styles.textarea}
+          style={s.textarea}
           rows={6}
           placeholder="Paste text to encrypt..."
           value={plaintext}
@@ -39,98 +48,34 @@ export default function EncryptPane() {
         />
       </div>
 
-      <div style={styles.field}>
-        <label style={styles.label}>Public Key (PEM)</label>
+      <div style={s.field}>
+        <label style={s.label}>Public Key (PEM)</label>
         <textarea
-          style={{ ...styles.textarea, ...styles.mono }}
+          style={{ ...s.textarea, ...s.mono }}
           rows={8}
-          placeholder="-----BEGIN PUBLIC KEY-----&#10;..."
+          placeholder={'-----BEGIN PUBLIC KEY-----\n...'}
           value={publicKey}
-          onChange={(e) => setPublicKey(e.target.value)}
+          onChange={(e) => { setPublicKey(e.target.value); setError('') }}
         />
       </div>
 
-      <button style={canEncrypt ? styles.btn : styles.btnDisabled} onClick={handleEncrypt} disabled={!canEncrypt}>
+      <button style={canEncrypt ? s.btn : s.btnDisabled} onClick={handleEncrypt} disabled={!canEncrypt}>
         {loading ? 'Encrypting...' : 'Encrypt'}
       </button>
 
-      {error && <div style={styles.error}>{error}</div>}
+      {error && <div style={s.error}>{error}</div>}
 
       {output && (
-        <div style={styles.field}>
-          <div style={styles.outputHeader}>
-            <label style={styles.label}>Encrypted Output (Base64)</label>
-            <button style={styles.copyBtn} onClick={handleCopy}>
+        <div style={s.field}>
+          <div style={s.outputHeader}>
+            <label style={s.label}>Encrypted Output (Base64)</label>
+            <button style={s.copyBtn} onClick={handleCopy}>
               {copied ? 'Copied!' : 'Copy'}
             </button>
           </div>
-          <textarea
-            style={{ ...styles.textarea, ...styles.mono }}
-            rows={5}
-            readOnly
-            value={output}
-          />
+          <textarea style={{ ...s.textarea, ...s.mono }} rows={5} readOnly value={output} />
         </div>
       )}
     </div>
   )
-}
-
-const styles = {
-  pane: { display: 'flex', flexDirection: 'column', gap: 16 },
-  field: { display: 'flex', flexDirection: 'column', gap: 6 },
-  label: { fontSize: 13, fontWeight: 600, color: '#ccc' },
-  textarea: {
-    background: '#1a1a2e',
-    color: '#e0e0e0',
-    border: '1px solid #333',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13,
-    resize: 'vertical',
-    outline: 'none',
-    width: '100%',
-    boxSizing: 'border-box'
-  },
-  mono: { fontFamily: 'monospace', fontSize: 12 },
-  btn: {
-    background: '#4f46e5',
-    color: '#fff',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'pointer',
-    alignSelf: 'flex-start'
-  },
-  btnDisabled: {
-    background: '#333',
-    color: '#666',
-    border: 'none',
-    borderRadius: 6,
-    padding: '10px 24px',
-    fontSize: 14,
-    fontWeight: 600,
-    cursor: 'not-allowed',
-    alignSelf: 'flex-start'
-  },
-  error: {
-    background: '#2d1a1a',
-    color: '#f87171',
-    border: '1px solid #7f1d1d',
-    borderRadius: 6,
-    padding: '10px 12px',
-    fontSize: 13
-  },
-  outputHeader: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
-  copyBtn: {
-    background: '#1e3a2f',
-    color: '#4ade80',
-    border: '1px solid #166534',
-    borderRadius: 4,
-    padding: '4px 12px',
-    fontSize: 12,
-    cursor: 'pointer'
-  }
 }
