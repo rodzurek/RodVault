@@ -1,7 +1,15 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { generateKeyPairSync, randomBytes, createCipheriv, publicEncrypt, constants } from 'crypto'
+import {
+  generateKeyPairSync,
+  randomBytes,
+  createCipheriv,
+  createDecipheriv,
+  publicEncrypt,
+  privateDecrypt,
+  constants
+} from 'crypto'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -47,9 +55,27 @@ ipcMain.handle('vault:encrypt', async (_event, plaintext, publicKeyPem) => {
   }
 })
 
-ipcMain.handle('vault:decrypt', async (_event, ciphertext, privateKeyPem) => {
-  // stub — real impl in STORY-05
-  return { result: `[stub] decrypt called` }
+ipcMain.handle('vault:decrypt', async (_event, base64Bundle, privateKeyPem) => {
+  try {
+    const bundle = JSON.parse(Buffer.from(base64Bundle, 'base64').toString('utf8'))
+
+    const aesKey = privateDecrypt(
+      { key: privateKeyPem, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+      Buffer.from(bundle.encryptedKey, 'base64')
+    )
+
+    const decipher = createDecipheriv('aes-256-gcm', aesKey, Buffer.from(bundle.iv, 'base64'))
+    decipher.setAuthTag(Buffer.from(bundle.authTag, 'base64'))
+
+    const plaintext = Buffer.concat([
+      decipher.update(Buffer.from(bundle.ciphertext, 'base64')),
+      decipher.final()
+    ]).toString('utf8')
+
+    return { result: plaintext }
+  } catch (err) {
+    return { error: 'Decryption failed: data may be corrupted or wrong key.' }
+  }
 })
 
 ipcMain.handle('vault:generateKeypair', async () => {
