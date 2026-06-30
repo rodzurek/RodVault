@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
+import { generateKeyPairSync } from 'crypto'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -30,8 +31,16 @@ ipcMain.handle('vault:decrypt', async (_event, ciphertext, privateKeyPem) => {
 })
 
 ipcMain.handle('vault:generateKeypair', async () => {
-  // stub — real impl in STORY-03
-  return { result: '[stub] generateKeypair called' }
+  try {
+    const { publicKey, privateKey } = generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    })
+    return { publicKey, privateKey }
+  } catch (err) {
+    return { error: err.message }
+  }
 })
 
 app.whenReady().then(createWindow)
