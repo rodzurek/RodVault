@@ -57,3 +57,5 @@ target/
 **/*.tsbuildinfo
 **/graphql.config.yml
 
+/dist/
+dist/
