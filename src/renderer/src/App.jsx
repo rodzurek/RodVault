@@ -1,29 +1,29 @@
 import { useEffect, useState } from 'react'
 
 function App() {
-  const [keys, setKeys] = useState(null)
-  const [error, setError] = useState(null)
+  const [output, setOutput] = useState('running...')
 
   useEffect(() => {
-    window.vault.generateKeypair().then((res) => {
-      if (res.error) setError(res.error)
-      else setKeys(res)
-    })
+    async function test() {
+      const { publicKey, privateKey, error: keyErr } = await window.vault.generateKeypair()
+      if (keyErr) return setOutput(`keygen error: ${keyErr}`)
+
+      const testString = 'Hello from RodVault — STORY-04 hybrid encrypt test!'
+      const { result, error: encErr } = await window.vault.encrypt(testString, publicKey)
+      if (encErr) return setOutput(`encrypt error: ${encErr}`)
+
+      setOutput(result)
+    }
+    test()
   }, [])
 
   return (
     <div style={{ padding: 32, fontFamily: 'monospace' }}>
-      <h1 style={{ fontFamily: 'sans-serif' }}>RodVault — STORY-03 IPC Test</h1>
-      {error && <p style={{ color: 'red' }}>Error: {error}</p>}
-      {keys && (
-        <>
-          <p><strong>Public Key:</strong></p>
-          <pre style={{ background: '#eee', padding: 12, fontSize: 11, overflowX: 'auto' }}>{keys.publicKey}</pre>
-          <p><strong>Private Key:</strong></p>
-          <pre style={{ background: '#eee', padding: 12, fontSize: 11, overflowX: 'auto' }}>{keys.privateKey}</pre>
-        </>
-      )}
-      {!keys && !error && <p>Generating keypair...</p>}
+      <h1 style={{ fontFamily: 'sans-serif' }}>RodVault — STORY-04 Encrypt Test</h1>
+      <p><strong>Encrypted Base64 output:</strong></p>
+      <pre style={{ background: '#eee', padding: 12, fontSize: 11, wordBreak: 'break-all', whiteSpace: 'pre-wrap' }}>
+        {output}
+      </pre>
     </div>
   )
 }

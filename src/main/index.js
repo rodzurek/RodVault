@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
 import { is } from '@electron-toolkit/utils'
-import { generateKeyPairSync } from 'crypto'
+import { generateKeyPairSync, randomBytes, createCipheriv, publicEncrypt, constants } from 'crypto'
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -21,8 +21,30 @@ function createWindow() {
 }
 
 ipcMain.handle('vault:encrypt', async (_event, plaintext, publicKeyPem) => {
-  // stub — real impl in STORY-04
-  return { result: `[stub] encrypt called: ${plaintext?.slice(0, 20)}` }
+  try {
+    const aesKey = randomBytes(32)
+    const iv = randomBytes(12)
+
+    const cipher = createCipheriv('aes-256-gcm', aesKey, iv)
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()])
+    const authTag = cipher.getAuthTag()
+
+    const encryptedKey = publicEncrypt(
+      { key: publicKeyPem, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+      aesKey
+    )
+
+    const bundle = JSON.stringify({
+      encryptedKey: encryptedKey.toString('base64'),
+      iv: iv.toString('base64'),
+      authTag: authTag.toString('base64'),
+      ciphertext: encrypted.toString('base64')
+    })
+
+    return { result: Buffer.from(bundle).toString('base64') }
+  } catch (err) {
+    return { error: err.message }
+  }
 })
 
 ipcMain.handle('vault:decrypt', async (_event, ciphertext, privateKeyPem) => {
