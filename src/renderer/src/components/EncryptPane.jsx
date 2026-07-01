@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { s } from '../styles/shared'
 
 function isValidPublicKey(str) {
@@ -6,13 +6,18 @@ function isValidPublicKey(str) {
   return t.startsWith('-----BEGIN') || /^ssh-rsa\s/.test(t)
 }
 
-export default function EncryptPane() {
-  const [plaintext, setPlaintext] = useState('')
-  const [publicKey, setPublicKey] = useState('')
+export default function EncryptPane({ publicKey, onPublicKeyChange }) {
+  const [plaintext, setPlaintext] = useState(
+    () => localStorage.getItem('vault_encrypt_plaintext') || ''
+  )
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+
+  useEffect(() => {
+    localStorage.setItem('vault_encrypt_plaintext', plaintext)
+  }, [plaintext])
 
   async function handleEncrypt() {
     if (!isValidPublicKey(publicKey)) {
@@ -61,7 +66,7 @@ export default function EncryptPane() {
           rows={8}
           placeholder={'-----BEGIN PUBLIC KEY-----\n...\nor: ssh-rsa AAAA...(RSA only)'}
           value={publicKey}
-          onChange={(e) => { setPublicKey(e.target.value); setError('') }}
+          onChange={(e) => { onPublicKeyChange(e.target.value); setError('') }}
         />
       </div>
 

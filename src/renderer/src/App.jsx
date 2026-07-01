@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import EncryptPane from './components/EncryptPane'
 import DecryptPane from './components/DecryptPane'
 import KeypairGenerator from './components/KeypairGenerator'
@@ -12,6 +12,21 @@ const TABS = [
 
 export default function App() {
   const [active, setActive] = useState('encrypt')
+
+  const [publicKey, setPublicKey] = useState(
+    () => localStorage.getItem('vault_public_key') || ''
+  )
+  const [privateKey, setPrivateKey] = useState(
+    () => localStorage.getItem('vault_private_key') || ''
+  )
+
+  useEffect(() => { localStorage.setItem('vault_public_key', publicKey) }, [publicKey])
+  useEffect(() => { localStorage.setItem('vault_private_key', privateKey) }, [privateKey])
+
+  function handleSaveKeypair(pub, priv) {
+    setPublicKey(pub)
+    setPrivateKey(priv)
+  }
 
   return (
     <div style={styles.root}>
@@ -33,9 +48,15 @@ export default function App() {
       </header>
 
       <main style={styles.main}>
-        {active === 'encrypt' && <EncryptPane />}
-        {active === 'decrypt' && <DecryptPane />}
-        {active === 'keygen' && <KeypairGenerator />}
+        <div style={{ display: active === 'encrypt' ? 'block' : 'none' }}>
+          <EncryptPane publicKey={publicKey} onPublicKeyChange={setPublicKey} />
+        </div>
+        <div style={{ display: active === 'decrypt' ? 'block' : 'none' }}>
+          <DecryptPane privateKey={privateKey} onPrivateKeyChange={setPrivateKey} />
+        </div>
+        <div style={{ display: active === 'keygen' ? 'block' : 'none' }}>
+          <KeypairGenerator onSaveKeypair={handleSaveKeypair} savedPublicKey={publicKey} savedPrivateKey={privateKey} />
+        </div>
       </main>
     </div>
   )
@@ -79,8 +100,7 @@ const styles = {
     fontSize: 13,
     fontWeight: 500,
     cursor: 'pointer',
-    fontFamily: 'inherit',
-    transition: 'color 0.15s'
+    fontFamily: 'inherit'
   },
   tabActive: {
     background: colors.accentBg,

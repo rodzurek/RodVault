@@ -1,29 +1,26 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { s } from '../styles/shared'
 
 function isPemKey(str) {
   return str.trim().startsWith('-----BEGIN')
 }
 
-function isValidBase64(str) {
-  try {
-    return btoa(atob(str.trim())) === str.trim() || str.trim().length > 0
-  } catch {
-    return false
-  }
-}
-
-export default function DecryptPane() {
-  const [ciphertext, setCiphertext] = useState('')
-  const [privateKey, setPrivateKey] = useState('')
+export default function DecryptPane({ privateKey, onPrivateKeyChange }) {
+  const [ciphertext, setCiphertext] = useState(
+    () => localStorage.getItem('vault_decrypt_ciphertext') || ''
+  )
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
+  useEffect(() => {
+    localStorage.setItem('vault_decrypt_ciphertext', ciphertext)
+  }, [ciphertext])
+
   async function handleDecrypt() {
     if (!isPemKey(privateKey)) {
-      setError('Invalid key format — paste a PEM private key starting with -----BEGIN PRIVATE KEY-----')
+      setError('Invalid key format — paste a PEM private key starting with -----BEGIN PRIVATE KEY----- or -----BEGIN OPENSSH PRIVATE KEY-----')
       return
     }
     setError('')
@@ -66,9 +63,9 @@ export default function DecryptPane() {
         <textarea
           style={{ ...s.textarea, ...s.mono }}
           rows={8}
-          placeholder={'-----BEGIN PRIVATE KEY-----\n...'}
+          placeholder={'-----BEGIN PRIVATE KEY-----\n...\nor: -----BEGIN OPENSSH PRIVATE KEY-----'}
           value={privateKey}
-          onChange={(e) => { setPrivateKey(e.target.value); setError('') }}
+          onChange={(e) => { onPrivateKeyChange(e.target.value); setError('') }}
         />
       </div>
 
