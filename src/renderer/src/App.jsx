@@ -4,6 +4,9 @@ import DecryptPane from './components/DecryptPane'
 import KeypairGenerator from './components/KeypairGenerator'
 import { colors } from './styles/shared'
 
+// Purge private key persisted to disk by older versions; public key stays persisted
+localStorage.removeItem('vault_private_key')
+
 const TABS = [
   { id: 'encrypt', label: 'Encrypt' },
   { id: 'decrypt', label: 'Decrypt' },
@@ -16,12 +19,9 @@ export default function App() {
   const [publicKey, setPublicKey] = useState(
     () => localStorage.getItem('vault_public_key') || ''
   )
-  const [privateKey, setPrivateKey] = useState(
-    () => localStorage.getItem('vault_private_key') || ''
-  )
+  const [privateKey, setPrivateKey] = useState('')
 
   useEffect(() => { localStorage.setItem('vault_public_key', publicKey) }, [publicKey])
-  useEffect(() => { localStorage.setItem('vault_private_key', privateKey) }, [privateKey])
 
   function handleSaveKeypair(pub, priv) {
     setPublicKey(pub)
