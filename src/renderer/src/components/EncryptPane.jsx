@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { s } from '../styles/shared'
+import FileDropZone from './FileDropZone'
 
 // Purge plaintext persisted to disk by older versions
 localStorage.removeItem('vault_encrypt_plaintext')
@@ -15,6 +16,8 @@ export default function EncryptPane({ publicKey, onPublicKeyChange }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [fileBusy, setFileBusy] = useState(false)
+  const [fileStatus, setFileStatus] = useState(null)
 
   async function handleEncrypt() {
     if (!isValidPublicKey(publicKey)) {
@@ -32,6 +35,25 @@ export default function EncryptPane({ publicKey, onPublicKeyChange }) {
       setError(`Unexpected error: ${e.message}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleFileEncrypt(path) {
+    if (!isValidPublicKey(publicKey)) {
+      setFileStatus({ type: 'error', msg: 'Paste a valid public key above before encrypting a file.' })
+      return
+    }
+    setFileBusy(true)
+    setFileStatus(null)
+    try {
+      const res = await window.vault.encryptFile(path, publicKey)
+      if (res.canceled) return
+      if (res.error) setFileStatus({ type: 'error', msg: res.error })
+      else setFileStatus({ type: 'success', msg: `Encrypted file saved to ${res.result}` })
+    } catch (e) {
+      setFileStatus({ type: 'error', msg: `Unexpected error: ${e.message}` })
+    } finally {
+      setFileBusy(false)
     }
   }
 
@@ -83,6 +105,15 @@ export default function EncryptPane({ publicKey, onPublicKeyChange }) {
           </div>
           <textarea style={{ ...s.textarea, ...s.mono }} rows={5} readOnly value={output} />
         </div>
+      )}
+
+      <div style={s.field}>
+        <label style={s.label}>Encrypt a File</label>
+        <FileDropZone hint="Encrypt any file with the public key above" busy={fileBusy} onFile={handleFileEncrypt} />
+      </div>
+
+      {fileStatus && (
+        <div style={fileStatus.type === 'error' ? s.error : s.success}>{fileStatus.msg}</div>
       )}
     </div>
   )

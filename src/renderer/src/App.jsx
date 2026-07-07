@@ -7,6 +7,10 @@ import { colors } from './styles/shared'
 // Purge private key persisted to disk by older versions; public key stays persisted
 localStorage.removeItem('vault_private_key')
 
+// Files dropped outside a drop zone must not navigate the window to the file
+window.addEventListener('dragover', (e) => e.preventDefault())
+window.addEventListener('drop', (e) => e.preventDefault())
+
 const TABS = [
   { id: 'encrypt', label: 'Encrypt' },
   { id: 'decrypt', label: 'Decrypt' },

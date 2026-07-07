@@ -1,5 +1,7 @@
-import { app, BrowserWindow, ipcMain } from 'electron'
-import { join } from 'path'
+import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { join, basename } from 'path'
+import { createReadStream, createWriteStream, promises as fsp } from 'fs'
+import { pipeline } from 'stream/promises'
 import { is } from '@electron-toolkit/utils'
 import {
   generateKeyPairSync,
@@ -125,12 +127,21 @@ function sshRsaToKeyObject(sshKey) {
   return createPublicKey({ key: { kty: 'RSA', n: toB64url(nBytes), e: toB64url(eBytes) }, format: 'jwk' })
 }
 
+function resolvePublicKey(raw) {
+  const trimmed = raw.trim()
+  return /^ssh-rsa\s/.test(trimmed) ? sshRsaToKeyObject(trimmed) : trimmed
+}
+
+function resolvePrivateKey(raw) {
+  const trimmed = raw.trim()
+  return trimmed.includes('BEGIN OPENSSH PRIVATE KEY')
+    ? opensshPrivateKeyToKeyObject(trimmed)
+    : createPrivateKey(trimmed)
+}
+
 ipcMain.handle('vault:encrypt', async (_event, plaintext, publicKeyRaw) => {
   try {
-    let publicKey = publicKeyRaw.trim()
-    if (/^ssh-rsa\s/.test(publicKey)) {
-      publicKey = sshRsaToKeyObject(publicKey)
-    }
+    const publicKey = resolvePublicKey(publicKeyRaw)
 
     const aesKey = randomBytes(32)
     const iv = randomBytes(12)
@@ -166,10 +177,7 @@ ipcMain.handle('vault:decrypt', async (_event, base64Bundle, privateKeyPem) => {
   try {
     const bundle = JSON.parse(Buffer.from(base64Bundle, 'base64').toString('utf8'))
 
-    const raw = privateKeyPem.trim()
-    const privateKey = raw.includes('BEGIN OPENSSH PRIVATE KEY')
-      ? opensshPrivateKeyToKeyObject(raw)
-      : createPrivateKey(raw)
+    const privateKey = resolvePrivateKey(privateKeyPem)
 
     const aesKey = privateDecrypt(
       { key: privateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
@@ -194,6 +202,131 @@ ipcMain.handle('vault:decrypt', async (_event, base64Bundle, privateKeyPem) => {
   }
 })
 
+// .rvault container: magic | u16BE wrappedKeyLen | wrappedKey | iv(12) | ciphertext | authTag(16)
+const FILE_MAGIC = Buffer.from('RVLT1')
+
+ipcMain.handle('vault:pickFile', async (event) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  const { canceled, filePaths } = await dialog.showOpenDialog(win, { properties: ['openFile'] })
+  return canceled || !filePaths.length ? null : filePaths[0]
+})
+
+ipcMain.handle('vault:encryptFile', async (event, inputPath, publicKeyRaw) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  let outputPath
+  try {
+    const publicKey = resolvePublicKey(publicKeyRaw)
+
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Save encrypted file',
+      defaultPath: basename(inputPath) + '.rvault',
+      filters: [{ name: 'RodVault Encrypted', extensions: ['rvault'] }]
+    })
+    if (canceled || !filePath) return { canceled: true }
+    outputPath = filePath
+
+    const aesKey = randomBytes(32)
+    const iv = randomBytes(12)
+    const wrappedKey = publicEncrypt(
+      { key: publicKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+      aesKey
+    )
+    const keyLen = Buffer.alloc(2)
+    keyLen.writeUInt16BE(wrappedKey.length)
+    const cipher = createCipheriv('aes-256-gcm', aesKey, iv)
+
+    async function* body() {
+      yield Buffer.concat([FILE_MAGIC, keyLen, wrappedKey, iv])
+      for await (const chunk of createReadStream(inputPath)) yield cipher.update(chunk)
+      const last = cipher.final()
+      if (last.length) yield last
+      yield cipher.getAuthTag()
+    }
+    await pipeline(body(), createWriteStream(outputPath))
+
+    return { result: outputPath }
+  } catch (err) {
+    console.error('[vault:encryptFile]', err)
+    if (outputPath) await fsp.unlink(outputPath).catch(() => {})
+    const msg = err?.message ?? String(err)
+    if (/key|PEM|ASN|ssh/i.test(msg)) {
+      return { error: 'Invalid public key — paste a valid PEM or SSH public key.' }
+    }
+    return { error: `File encryption failed: ${msg}` }
+  }
+})
+
+ipcMain.handle('vault:decryptFile', async (event, inputPath, privateKeyPem) => {
+  const win = BrowserWindow.fromWebContents(event.sender)
+  let outputPath
+  let fd
+  try {
+    const privateKey = resolvePrivateKey(privateKeyPem)
+
+    const stat = await fsp.stat(inputPath)
+    fd = await fsp.open(inputPath, 'r')
+
+    const head = Buffer.alloc(7)
+    await fd.read(head, 0, 7, 0)
+    if (stat.size < 7 || !head.subarray(0, 5).equals(FILE_MAGIC)) {
+      throw new Error('Not a RodVault encrypted file — expected a .rvault file created by this app')
+    }
+    const wrappedKeyLen = head.readUInt16BE(5)
+    const headerLen = 7 + wrappedKeyLen + 12
+    if (stat.size < headerLen + 16) throw new Error('File is truncated or corrupted')
+
+    const rest = Buffer.alloc(wrappedKeyLen + 12)
+    await fd.read(rest, 0, rest.length, 7)
+    const wrappedKey = rest.subarray(0, wrappedKeyLen)
+    const iv = rest.subarray(wrappedKeyLen)
+    const authTag = Buffer.alloc(16)
+    await fd.read(authTag, 0, 16, stat.size - 16)
+    await fd.close()
+    fd = null
+
+    const aesKey = privateDecrypt(
+      { key: privateKey, padding: constants.RSA_PKCS1_OAEP_PADDING, oaepHash: 'sha256' },
+      wrappedKey
+    )
+    const decipher = createDecipheriv('aes-256-gcm', aesKey, iv)
+    decipher.setAuthTag(authTag)
+
+    const base = basename(inputPath)
+    const defaultName = base.endsWith('.rvault') ? base.slice(0, -'.rvault'.length) : base + '.decrypted'
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Save decrypted file',
+      defaultPath: defaultName
+    })
+    if (canceled || !filePath) return { canceled: true }
+    outputPath = filePath
+
+    const ciphertextLen = stat.size - headerLen - 16
+    async function* body() {
+      if (ciphertextLen > 0) {
+        const src = createReadStream(inputPath, { start: headerLen, end: stat.size - 17 })
+        for await (const chunk of src) yield decipher.update(chunk)
+      }
+      const last = decipher.final() // throws if wrong key or file tampered with
+      if (last.length) yield last
+    }
+    await pipeline(body(), createWriteStream(outputPath))
+
+    return { result: outputPath }
+  } catch (err) {
+    console.error('[vault:decryptFile]', err)
+    if (fd) await fd.close().catch(() => {})
+    if (outputPath) await fsp.unlink(outputPath).catch(() => {})
+    const msg = err?.message ?? String(err)
+    if (/key|PEM|ASN|format|passphrase/i.test(msg)) {
+      return { error: `Invalid private key format: ${msg}` }
+    }
+    if (/RVLT|rvault|truncated/i.test(msg)) {
+      return { error: msg }
+    }
+    return { error: 'File decryption failed: wrong key, or file is corrupted.' }
+  }
+})
+
 ipcMain.handle('vault:generateKeypair', async () => {
   try {
     const { publicKey, privateKey } = generateKeyPairSync('rsa', {
@@ -208,6 +341,10 @@ ipcMain.handle('vault:generateKeypair', async () => {
 })
 
 app.whenReady().then(createWindow)
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
