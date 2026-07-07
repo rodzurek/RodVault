@@ -94,6 +94,16 @@ export const s = {
     fontSize: 13,
     lineHeight: 1.5
   },
+  success: {
+    background: colors.greenBg,
+    color: colors.green,
+    border: `1px solid ${colors.greenBorder}`,
+    borderRadius: 7,
+    padding: '10px 14px',
+    fontSize: 13,
+    lineHeight: 1.5,
+    wordBreak: 'break-all'
+  },
   warning: {
     background: colors.yellowBg,
     color: colors.yellow,

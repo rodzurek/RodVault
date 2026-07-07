@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { s } from '../styles/shared'
+import FileDropZone from './FileDropZone'
 
 // Purge ciphertext persisted to disk by older versions
 localStorage.removeItem('vault_decrypt_ciphertext')
@@ -14,6 +15,8 @@ export default function DecryptPane({ privateKey, onPrivateKeyChange }) {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [fileBusy, setFileBusy] = useState(false)
+  const [fileStatus, setFileStatus] = useState(null)
 
   async function handleDecrypt() {
     if (!isPemKey(privateKey)) {
@@ -31,6 +34,25 @@ export default function DecryptPane({ privateKey, onPrivateKeyChange }) {
       setError(`Unexpected error: ${e.message}`)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleFileDecrypt(path) {
+    if (!isPemKey(privateKey)) {
+      setFileStatus({ type: 'error', msg: 'Paste a valid private key above before decrypting a file.' })
+      return
+    }
+    setFileBusy(true)
+    setFileStatus(null)
+    try {
+      const res = await window.vault.decryptFile(path, privateKey)
+      if (res.canceled) return
+      if (res.error) setFileStatus({ type: 'error', msg: res.error })
+      else setFileStatus({ type: 'success', msg: `Decrypted file saved to ${res.result}` })
+    } catch (e) {
+      setFileStatus({ type: 'error', msg: `Unexpected error: ${e.message}` })
+    } finally {
+      setFileBusy(false)
     }
   }
 
@@ -82,6 +104,15 @@ export default function DecryptPane({ privateKey, onPrivateKeyChange }) {
           </div>
           <textarea style={s.textarea} rows={6} readOnly value={output} />
         </div>
+      )}
+
+      <div style={s.field}>
+        <label style={s.label}>Decrypt a File</label>
+        <FileDropZone hint="Decrypt a .rvault file with the private key above" busy={fileBusy} onFile={handleFileDecrypt} />
+      </div>
+
+      {fileStatus && (
+        <div style={fileStatus.type === 'error' ? s.error : s.success}>{fileStatus.msg}</div>
       )}
     </div>
   )
