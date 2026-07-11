@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { s } from '../styles/shared'
+
+// Purge plaintext persisted to disk by older versions
+localStorage.removeItem('vault_encrypt_plaintext')
 
 function isValidPublicKey(str) {
   const t = str.trim()
@@ -7,17 +10,11 @@ function isValidPublicKey(str) {
 }
 
 export default function EncryptPane({ publicKey, onPublicKeyChange }) {
-  const [plaintext, setPlaintext] = useState(
-    () => localStorage.getItem('vault_encrypt_plaintext') || ''
-  )
+  const [plaintext, setPlaintext] = useState('')
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    localStorage.setItem('vault_encrypt_plaintext', plaintext)
-  }, [plaintext])
 
   async function handleEncrypt() {
     if (!isValidPublicKey(publicKey)) {

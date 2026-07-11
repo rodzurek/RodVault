@@ -1,22 +1,19 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { s } from '../styles/shared'
+
+// Purge ciphertext persisted to disk by older versions
+localStorage.removeItem('vault_decrypt_ciphertext')
 
 function isPemKey(str) {
   return str.trim().startsWith('-----BEGIN')
 }
 
 export default function DecryptPane({ privateKey, onPrivateKeyChange }) {
-  const [ciphertext, setCiphertext] = useState(
-    () => localStorage.getItem('vault_decrypt_ciphertext') || ''
-  )
+  const [ciphertext, setCiphertext] = useState('')
   const [output, setOutput] = useState('')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  useEffect(() => {
-    localStorage.setItem('vault_decrypt_ciphertext', ciphertext)
-  }, [ciphertext])
 
   async function handleDecrypt() {
     if (!isPemKey(privateKey)) {
